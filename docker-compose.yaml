@@ -1,0 +1,87 @@
+version: '3.9'
+
+networks:
+    placeholder: ## Need all services on the same network to interact
+        driver: bridge
+
+services:
+    grafana:
+        hostname: grafana
+        image: grafana/grafana:latest
+        restart: always
+        networks:
+            - placeholder
+        ports:
+            - 3000:3000
+        volumes:
+            - C:\Users\Josh\docker_data\report_writer\grafana:\var\lib\grafana
+
+    timescaledb:
+        hostname: postgres
+        image: timescale/timescaledb:latest-pg12
+        restart: always
+        networks:
+            - placeholder
+        ports:
+            - 5432:5432
+        environment:
+            - POSTGRES_DB=lab
+            - POSTGRES_USER=lab
+            - POSTGRES_PASSWORD=Password01
+        volumes:
+            - C:\Users\Josh\docker_data\report_writer\timescaledb:\var\lib\postgresql\data
+
+    pgadmin:
+        image: dpage/pgadmin4
+        restart: always
+        networks:
+            - placeholder
+        environment:
+            PGADMIN_DEFAULT_EMAIL: admin@admin.com
+            PGADMIN_DEFAULT_PASSWORD: root
+        ports:
+            - "5050:80"
+
+    telegraf_1:
+        image: telegraf:1.19.0
+        restart: always
+        networks:
+            - placeholder
+        depends_on:
+            - "influxdb"
+        volumes:
+            - .\docker_files\telegraf_1.conf:/etc/telegraf/telegraf.conf
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        tty: true
+        privileged: true
+
+#    telegraf_2:
+#        image: telegraf:latest
+#        restart: always
+#        networks:
+#            - placeholder
+#        depends_on:
+#            - "timescaledb"
+#        volumes:
+#            - .\docker_files\telegraf_2.conf:/etc/telegraf/telegraf.conf
+#            - /var/run/docker.sock:/var/run/docker.sock:ro
+#        tty: true
+#        privileged: true
+
+    influxdb:
+        image: influxdb:1.8.10
+        restart: always
+        networks:
+            - placeholder
+        ports:
+            - 8086:8086
+        volumes:
+            - C:\Users\Josh\docker_data\report_writer\influxdb:/var/lib/influxdb
+
+    chronograf:
+        image: chronograf:1.8.10
+        ports:
+            - 8888:8888
+        networks:
+            - placeholder
+        command: [ "chronograf", "--influxdb-url=http://influxdb:8086" ]
